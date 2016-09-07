@@ -9,19 +9,16 @@ def dist(x0, y0, x1, y1):
 
 class Player(PlayerAI):
     def __init__(self):
-        super(Player, self).__init__('Player1')
+        super(Player, self).__init__('Demo1')
 
     def update(self, player_positions, food_positions):
         closest_food = None
 
-        min_dist = 1000
-        print(food_positions)
+        min_dist = 10000000
         for f in food_positions:
             d = dist(self.position[0], self.position[1], f[0], f[1])
-            print(d)
             if d < min_dist:
-                d = min_dist
+                min_dist = d
                 closest_food = f
 
-        print('>>', self.position)
         return closest_food[0] - self.position[0], closest_food[1] - self.position[1]

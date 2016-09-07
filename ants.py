@@ -40,7 +40,7 @@ class CircleSprite(Sprite):
 
 
 class Player(CircleSprite):
-    __SIZE = 16
+    __SIZE = 24
 
     def __init__(self, name):
         self.name = name[:10]
@@ -52,7 +52,7 @@ class Player(CircleSprite):
         return tuple(int(255 * i/r) for i in array) + (200,)
 
     def _manip_image(self, im):
-        font = ImageFont.truetype('assets/arial.ttf', 13)
+        font = ImageFont.truetype('assets/arial.ttf', 15)
         draw = ImageDraw.Draw(im)
         text_size = draw.textsize(self.name, font=font)
 
@@ -67,11 +67,17 @@ class Player(CircleSprite):
 
 
 class Feeder(CircleSprite):
-    __SIZE = 60
+    __SIZE = 80
 
     def __init__(self):
         super(Feeder, self).__init__(self.__SIZE, (128, 255, 128, 240))
-        self.position = 300, 300
+
+
+class Food(CircleSprite):
+    __SIZE = 12
+
+    def __init__(self):
+        super(Food, self).__init__(self.__SIZE, (255, 255, 0, 200))
 
 
 class Main(ColorLayer):
@@ -82,17 +88,24 @@ class Main(ColorLayer):
             sprite = Player('1234567890')
             self.add(sprite, z=1)
 
-            sprite.position = random.randrange(150, 600), random.randrange(150,600)
+            sprite.position = random.randrange(150, 800), random.randrange(150,800)
             left = act.MoveBy((-150, 0), 2)
             sprite.do(act.Repeat(left + act.Reverse(left)))
+
+        for i in range(10):
+            food = Food()
+            self.add(food, z=1)
+
+            food.position = random.randrange(10, 790), random.randrange(10, 790)
 
         self.__init_map()
 
     def __init_map(self):
         feeder = Feeder()
+        feeder.position = 400, 400
         self.add(feeder, z=-1)
 
 
 if __name__ == '__main__':
-    director.init(width=600, height=600, autoscale=True, resizable=True)
+    director.init(width=800, height=800, autoscale=True, resizable=True)
     director.run(cocos.scene.Scene(Main()))

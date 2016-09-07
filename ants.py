@@ -11,6 +11,7 @@
 #   5. food gives 1
 
 import random
+import math
 
 from PIL import Image, ImageDraw, ImageFont
 from pyglet.image import ImageData
@@ -53,6 +54,7 @@ class Player(CircleEntity):
     def __init__(self, name):
         self.name = name[:10]
         super(Player, self).__init__(self.__SIZE, self.__gen_rand_color())
+        self.life = 1
 
     def __gen_rand_color(self):
         array = [random.random() for _ in range(3)]
@@ -133,6 +135,7 @@ class Main(ColorLayer):
 
         self.add(p1)
         self.add(p2)
+        p2.life = 10
         # for i in range(20):
         #     p = Player('123')
         #     self.__players.append(p)
@@ -155,11 +158,23 @@ class Main(ColorLayer):
     def __update(self, dt):
         self.feeder.update()
 
+        dead_players = []
         for p in self.__players:
             p.update()
+            if p.life <= 0:
+                dead_players.append(p)
+
+        for p in dead_players:
+            # removing from layer crashes with error now
+            self.__players.remove(p)
+            p.remove_action(p.actions[0])
+            p.position = -100, -100
 
         for c1, c2 in self.collision_manager.iter_all_collisions():
-            print(c1, 'with', c2, 'at time', dt)
+            if type(c1) is Player and type(c2) is Player:
+                if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 5:
+                    c1.life -= dt
+                    c2.life -= dt
 
 
 if __name__ == '__main__':

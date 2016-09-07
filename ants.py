@@ -105,6 +105,7 @@ class Food(CircleEntity):
 class Main(ColorLayer):
     WIDTH = 800
     HEIGHT = 800
+    __FOOD_COUNT = 8
 
     def __init__(self):
         super(Main, self).__init__(52, 152, 219, 70)
@@ -119,6 +120,9 @@ class Main(ColorLayer):
     def add(self, obj, *args, **kwargs):
         super(Main, self).add(obj, *args, **kwargs)
         self.collision_manager.add(obj)
+
+    def __rand_position(self):
+        return random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
 
     def __init_map(self):
         self.feeder = Feeder()
@@ -136,48 +140,21 @@ class Main(ColorLayer):
 
             ai = mod.Player()
             p = Player(ai.name)
-            p.position = 10, 10
+            p.position = self.__rand_position()
 
             p.do(MoveAI(ai, self.__players, self.__food))
 
             self.__players.append(p)
             self.add(p)
 
-        # p1 = Player('1')
-        # p2 = Player('2')
-        # p1.position = 10, 10
-        # p2.position = 100, 100
-
-        # mv = act.MoveBy((500, 500), 3)
-        # p1.do(act.Repeat(mv + act.Reverse(mv)))
-        # p2.do(act.Repeat(act.Reverse(mv) + mv))
-
-        # self.__players.append(p1)
-        # self.__players.append(p2)
-
-        # self.add(p1)
-        # self.add(p2)
-        # p2.life = 10
-        # for i in range(20):
-        #     p = Player('123')
-        #     self.__players.append(p)
-
-        #     self.add(p, z=1)
-
-        #     # TODO:
-        #     p.position = random.randrange(150, 800), random.randrange(150, 800)
-        #     left = act.MoveBy((-150, 0), 2)
-        #     sprite.do(act.Repeat(left + act.Reverse(left)))
-
     def __init_food(self):
         self.__food = []
 
-        for i in range(10):
+        for i in range(self.__FOOD_COUNT):
             food = Food()
-            food.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
+            food.position = self.__rand_position()
             self.__food.append(food)
             self.add(food, z=1)
-
 
     def __update(self, dt):
         # update physics positions
@@ -204,7 +181,6 @@ class Main(ColorLayer):
                 c2.life += 0.1 * dt
             elif type(c1) is Player and type(c2) is Feeder:
                 c1.life += 0.1 * dt
-        # print(self.__players[0].life, self.__players[1].life)
 
         # update lives
         dead_players = []
@@ -222,12 +198,12 @@ class Main(ColorLayer):
         for f in self.__food:
             if f.life <= 0:
                 # respawn it
-                f.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
+                f.position = self.__rand_position()
                 f.life = 1
 
 
 class MoveAI(act.Move):
-    __SPEED = 2
+    __SPEED = 0.9
 
     def __init__(self, ai, players, food, *args, **kwargs):
         super(MoveAI, self).__init__(*args, **kwargs)

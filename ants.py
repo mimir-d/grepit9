@@ -1,17 +1,20 @@
 
 # objects:
-#   1. map 600x600
-#   2. entity 15x15
+#   1. map 800x800
+#   2. entity 25x25
+#   3. food 12x12
 
 # game mechanics:
 #   1. big circle in middle with +0.1/s
 #   2. walls kills
 #   3. obstacles -0.5/s
-#   4. collisions -1/s when delta > 5
+#   4. collisions -1/s when delta > 3
 #   5. food gives 1
 
 import random
 import math
+import os
+import importlib
 
 from PIL import Image, ImageDraw, ImageFont
 from pyglet.image import ImageData
@@ -56,6 +59,7 @@ class Player(CircleEntity):
         self.name = name[:10]
         super(Player, self).__init__(self.__SIZE, self.__gen_rand_color())
         self.life = 1
+        self.velocity = (0, 0)
 
     def __gen_rand_color(self):
         array = [random.random() for _ in range(3)]
@@ -104,8 +108,8 @@ class Main(ColorLayer):
         self.collision_manager = cm.CollisionManagerBruteForce()
 
         self.__init_map()
-        self.__init_players()
         self.__init_food()
+        self.__init_players()
 
         self.schedule(self.__update)
 
@@ -121,21 +125,36 @@ class Main(ColorLayer):
     def __init_players(self):
         self.__players = []
 
-        p1 = Player('1')
-        p2 = Player('2')
-        p1.position = 10, 10
-        p2.position = 100, 100
+        for fn in os.listdir('ai'):
+            if fn[:6] != 'player':
+                continue
+            mod_name = os.path.splitext(fn)[0]
+            mod = importlib.import_module('ai.{}'.format(mod_name))
 
-        mv = act.MoveBy((500, 500), 3)
-        p1.do(act.Repeat(mv + act.Reverse(mv)))
-        p2.do(act.Repeat(act.Reverse(mv) + mv))
+            ai = mod.Player()
+            p = Player(ai.name)
+            p.position = 10, 10
 
-        self.__players.append(p1)
-        self.__players.append(p2)
+            p.do(MoveAI(ai, self.__players, self.__food))
 
-        self.add(p1)
-        self.add(p2)
-        p2.life = 10
+            self.__players.append(p)
+            self.add(p)
+
+        # p1 = Player('1')
+        # p2 = Player('2')
+        # p1.position = 10, 10
+        # p2.position = 100, 100
+
+        # mv = act.MoveBy((500, 500), 3)
+        # p1.do(act.Repeat(mv + act.Reverse(mv)))
+        # p2.do(act.Repeat(act.Reverse(mv) + mv))
+
+        # self.__players.append(p1)
+        # self.__players.append(p2)
+
+        # self.add(p1)
+        # self.add(p2)
+        # p2.life = 10
         # for i in range(20):
         #     p = Player('123')
         #     self.__players.append(p)
@@ -152,10 +171,10 @@ class Main(ColorLayer):
 
         for i in range(10):
             food = Food()
-            #food.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
-            food.position = 50,50
+            food.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
             self.__food.append(food)
             self.add(food, z=1)
+
 
     def __update(self, dt):
         # update physics positions
@@ -187,7 +206,7 @@ class Main(ColorLayer):
         # update lives
         dead_players = []
         for p in self.__players:
-            if p.life <= 0:
+            if p.life <= 0 or p.position[0] < 10 or p.position[0] > self.WIDTH-10 or p.position[1] < 10 or p.position[1] > self.HEIGHT-10:
                 dead_players.append(p)
 
         for p in dead_players:
@@ -202,6 +221,46 @@ class Main(ColorLayer):
                 # respawn it
                 f.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
                 f.life = 1
+
+
+class MoveAI(act.Move):
+    __SPEED = 5
+
+    def __init__(self, ai, players, food, *args, **kwargs):
+        super(MoveAI, self).__init__(*args, **kwargs)
+        self.__ai = ai
+        self.__players = players
+        self.__food = food
+
+    def step(self, dt):
+        super(MoveAI, self).step(dt)
+
+        dx, dy = self.__ai.update(
+            [p.position for p in self.__players],
+            [f.position for f in self.__food]
+        )
+
+        # normalize
+        mag = (dx*dx + dy*dy) ** 0.5
+        dx /= mag
+        dy /= mag
+
+        self.target.position = (
+            self.target.position[0] + dx * self.__SPEED,
+            self.target.position[1] + dy * self.__SPEED
+        )
+        self.__ai.position = self.target.position[:]
+
+    def __deepcopy__(self, memo):
+        # the framework does a deepcopy on the action, and i need the players and food refs to
+        # work so this deepcopy override needs to be here
+        return self
+
+
+class PlayerAI:
+    def __init__(self, name):
+        self.position = (0, 0)
+        self.name = name
 
 
 if __name__ == '__main__':

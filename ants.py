@@ -31,6 +31,9 @@ from cocos.director import director
 class CircleEntity(Sprite):
     def __init__(self, size, color):
         super(CircleEntity, self).__init__(self.__create_image(size, color))
+        # set anchor
+        self.image_anchor_x = size/2
+        self.image_anchor_y = size/2
         self.__init_phys(size)
         self.life = 0
 
@@ -224,7 +227,7 @@ class Main(ColorLayer):
 
 
 class MoveAI(act.Move):
-    __SPEED = 5
+    __SPEED = 2
 
     def __init__(self, ai, players, food, *args, **kwargs):
         super(MoveAI, self).__init__(*args, **kwargs)

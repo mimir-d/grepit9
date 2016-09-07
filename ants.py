@@ -29,6 +29,7 @@ class CircleEntity(Sprite):
     def __init__(self, size, color):
         super(CircleEntity, self).__init__(self.__create_image(size, color))
         self.__init_phys(size)
+        self.life = 0
 
     def __create_image(self, size, color):
         im = Image.new('RGBA', (size, size), (255, 255, 255, 0))
@@ -76,7 +77,7 @@ class Player(CircleEntity):
         return im_name
 
     def __str__(self):
-        return self.name
+        return 'Player:{}'.format(self.name)
 
 
 class Feeder(CircleEntity):
@@ -91,8 +92,7 @@ class Food(CircleEntity):
 
     def __init__(self):
         super(Food, self).__init__(self.__SIZE, (255, 255, 0, 200))
-        # TODO:
-        self.alive = True
+        self.life = 1
 
 
 class Main(ColorLayer):
@@ -126,7 +126,7 @@ class Main(ColorLayer):
         p1.position = 10, 10
         p2.position = 100, 100
 
-        mv = act.MoveBy((100, 100), 5)
+        mv = act.MoveBy((500, 500), 3)
         p1.do(act.Repeat(mv + act.Reverse(mv)))
         p2.do(act.Repeat(act.Reverse(mv) + mv))
 
@@ -148,19 +148,45 @@ class Main(ColorLayer):
         #     sprite.do(act.Repeat(left + act.Reverse(left)))
 
     def __init_food(self):
-        # for i in range(10):
-        #     food = Food()
-        #     self.add(food, z=1)
+        self.__food = []
 
-        #     food.position = random.randrange(10, 790), random.randrange(10, 790)
-        pass
+        for i in range(10):
+            food = Food()
+            #food.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
+            food.position = 50,50
+            self.__food.append(food)
+            self.add(food, z=1)
 
     def __update(self, dt):
+        # update physics positions
         self.feeder.update()
 
-        dead_players = []
         for p in self.__players:
             p.update()
+
+        for f in self.__food:
+            f.update()
+
+        for c1, c2 in self.collision_manager.iter_all_collisions():
+            if type(c1) is Player and type(c2) is Player:
+                if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 3:
+                    c1.life -= dt
+                    c2.life -= dt
+            elif type(c1) is Food and type(c2) is Player and c1.life > 0:
+                c1.life = 0
+                c2.life += 1
+            elif type(c1) is Player and type(c2) is Food and c2.life > 0:
+                c1.life += 1
+                c2.life = 0
+            elif type(c1) is Feeder and type(c2) is Player:
+                c2.life += 0.1 * dt
+            elif type(c1) is Player and type(c2) is Feeder:
+                c1.life += 0.1 * dt
+        # print(self.__players[0].life, self.__players[1].life)
+
+        # update lives
+        dead_players = []
+        for p in self.__players:
             if p.life <= 0:
                 dead_players.append(p)
 
@@ -169,12 +195,13 @@ class Main(ColorLayer):
             self.__players.remove(p)
             p.remove_action(p.actions[0])
             p.position = -100, -100
+            print('{} died'.format(p))
 
-        for c1, c2 in self.collision_manager.iter_all_collisions():
-            if type(c1) is Player and type(c2) is Player:
-                if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 5:
-                    c1.life -= dt
-                    c2.life -= dt
+        for f in self.__food:
+            if f.life <= 0:
+                # respawn it
+                f.position = random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)
+                f.life = 1
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ class Player(PlayerAI):
     def __init__(self):
         super(Player, self).__init__('Demo4')
 
-    def update(self, player_positions, food_positions):
+    def update(self, player_positions, player_lives, food_positions):
         closest_food = None
 
         min_dist = 10000000

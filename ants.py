@@ -51,7 +51,7 @@ class CircleEntity(Sprite):
     def __init_phys(self, size):
         self.cshape = cm.CircleShape(eu.Vector2(0, 0), size/2)
 
-    def update(self):
+    def update(self, dt):
         self.cshape.center = eu.Vector2(*self.position)
 
 
@@ -82,6 +82,10 @@ class Player(CircleEntity):
         draw.text((im.size[0], 0), self.name, font=font, fill=self.color[:3])
 
         return im_name
+
+    def update(self, dt):
+        super(Player, self).update(dt)
+        self.life -= 0.3 * dt
 
     def __str__(self):
         return 'Player:{}'.format(self.name)
@@ -158,24 +162,24 @@ class Main(ColorLayer):
 
     def __update(self, dt):
         # update physics positions
-        self.feeder.update()
+        self.feeder.update(dt)
 
         for p in self.__players:
-            p.update()
+            p.update(dt)
 
         for f in self.__food:
-            f.update()
+            f.update(dt)
 
         for c1, c2 in self.collision_manager.iter_all_collisions():
             if type(c1) is Player and type(c2) is Player:
-                if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 3:
-                    c1.life -= dt
-                    c2.life -= dt
+                if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 1:
+                    c1.life -= 2 * dt
+                    c2.life -= 2 * dt
             elif type(c1) is Food and type(c2) is Player and c1.life > 0:
+                c2.life += c1.life
                 c1.life = 0
-                c2.life += 1
             elif type(c1) is Player and type(c2) is Food and c2.life > 0:
-                c1.life += 1
+                c1.life += c2.life
                 c2.life = 0
             elif type(c1) is Feeder and type(c2) is Player:
                 c2.life += 0.1 * dt
@@ -203,7 +207,7 @@ class Main(ColorLayer):
 
 
 class MoveAI(act.Move):
-    __SPEED = 0.9
+    __SPEED = 1.5
 
     def __init__(self, ai, players, food, *args, **kwargs):
         super(MoveAI, self).__init__(*args, **kwargs)
@@ -214,10 +218,14 @@ class MoveAI(act.Move):
     def step(self, dt):
         super(MoveAI, self).step(dt)
 
-        dx, dy = self.__ai.update(
-            [p.position for p in self.__players],
-            [f.position for f in self.__food]
-        )
+        try:
+            dx, dy = self.__ai.update(
+                [p.position for p in self.__players],
+                [p.life for p in self.__players],
+                [f.position for f in self.__food]
+            )
+        except:
+            dx, dy = 0, 0
 
         # normalize
         mag = (dx*dx + dy*dy) ** 0.5
@@ -229,6 +237,7 @@ class MoveAI(act.Move):
             self.target.position[1] + dy * self.__SPEED
         )
         self.__ai.position = self.target.position[:]
+        self.__ai.life = self.target.life
 
     def __deepcopy__(self, memo):
         # the framework does a deepcopy on the action, and i need the players and food refs to
@@ -239,6 +248,7 @@ class MoveAI(act.Move):
 class PlayerAI:
     def __init__(self, name):
         self.position = (0, 0)
+        self.life = 0
         self.name = name
 
 

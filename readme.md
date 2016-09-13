@@ -1,7 +1,8 @@
-GREPIT 9 workshop
-===============
+GREPIT workshops
+================
 
-install notes
--------------
-    - install pip and run: pip install -r requirements.txt
-    - run with: python ants.py (will create an entity for each player module in ai directory)
+This repo contains the workshop code for the GREPIT contests (http://grepit.info).
+
+Usage
+-----
+See readme.md inside each subfolder for install notes and other info.

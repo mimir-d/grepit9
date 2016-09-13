@@ -25,15 +25,13 @@ import cocos.euclid as eu
 import cocos.collision_model as cm
 from cocos.layer import Layer, ColorLayer
 from cocos.sprite import Sprite
+from cocos.text import Label
 from cocos.director import director
 
 
 class CircleEntity(Sprite):
     def __init__(self, size, color):
         super(CircleEntity, self).__init__(self.__create_image(size, color))
-        # set anchor
-        self.image_anchor_x = size/2
-        self.image_anchor_y = size/2
         self.__init_phys(size)
         self.life = 0
 
@@ -42,11 +40,7 @@ class CircleEntity(Sprite):
         draw = ImageDraw.Draw(im)
         draw.ellipse((1, 1, im.size[0]-1, im.size[1]-1), fill=color)
 
-        im = self._manip_image(im)
         return ImageData(*im.size, 'RGBA', im.tobytes(), pitch=-im.size[0]*4)
-
-    def _manip_image(self, im):
-        return im
 
     def __init_phys(self, size):
         self.cshape = cm.CircleShape(eu.Vector2(0, 0), size/2)
@@ -59,33 +53,27 @@ class Player(CircleEntity):
     __SIZE = 25
 
     def __init__(self, name):
-        self.name = name[:10]
-        super(Player, self).__init__(self.__SIZE, self.__gen_rand_color())
+        self.name = name[:15]
+        color = self.__gen_rand_color()
+        super(Player, self).__init__(self.__SIZE, color)
         self.life = 1
         self.velocity = (0, 0)
+
+        self.label = Label()
+        self.label.element.color = color[:3] + (255,)
+        self.label.position = (self.__SIZE/2, self.__SIZE/2)
+        self.add(self.label)
 
     def __gen_rand_color(self):
         array = [random.random() for _ in range(3)]
         r = max(array)
         return tuple(int(255 * i/r) for i in array) + (200,)
 
-    def _manip_image(self, im):
-        font = ImageFont.truetype('assets/arial.ttf', 15)
-        draw = ImageDraw.Draw(im)
-        text_size = draw.textsize(self.name, font=font)
-
-        # create name
-        im_name = Image.new('RGBA', (im.size[0] + text_size[0], im.size[1] + text_size[1]), (255, 255, 255, 0))
-        im_name.paste(im, (0, text_size[1]))
-
-        draw = ImageDraw.Draw(im_name)
-        draw.text((im.size[0], 0), self.name, font=font, fill=self.color[:3])
-
-        return im_name
-
     def update(self, dt):
         super(Player, self).update(dt)
         self.life -= 0.3 * dt
+
+        self.label.element.text = '{} -> {:.2f}'.format(self.name, self.life)
 
     def __str__(self):
         return 'Player:{}'.format(self.name)

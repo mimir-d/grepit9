@@ -229,8 +229,9 @@ class MoveAI(act.Move):
 
         # normalize
         mag = (dx*dx + dy*dy) ** 0.5
-        dx /= mag
-        dy /= mag
+        if math.fabs(mag) > 1e-6:
+            dx /= mag
+            dy /= mag
 
         self.target.position = (
             self.target.position[0] + dx * self.__SPEED,

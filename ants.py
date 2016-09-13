@@ -123,7 +123,8 @@ class Main(ColorLayer):
 
     def add(self, obj, *args, **kwargs):
         super(Main, self).add(obj, *args, **kwargs)
-        self.collision_manager.add(obj)
+        if hasattr(obj, 'cshape'):
+            self.collision_manager.add(obj)
 
     def __rand_position(self):
         return random.randrange(10, self.WIDTH-10), random.randrange(10, self.HEIGHT-10)

@@ -9,7 +9,7 @@ def dist(x0, y0, x1, y1):
 
 class Player(PlayerAI):
     def __init__(self):
-        super(Player, self).__init__('Demo3')
+        super(Player, self).__init__('GOD')
 
     def update(self, player_positions, player_lives, food_positions):
         closest_food = None

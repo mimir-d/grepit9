@@ -7,9 +7,8 @@
 # game mechanics:
 #   1. big circle in middle with +0.1/s
 #   2. walls kills
-#   3. obstacles -0.5/s
-#   4. collisions -1/s when delta > 3
-#   5. food gives 1
+#   3. collisions -1/s when delta > 3
+#   4. food gives 1
 
 import random
 import math
@@ -53,16 +52,16 @@ class Player(CircleEntity):
     __SIZE = 25
 
     def __init__(self, name):
-        self.name = name[:15]
         color = self.__gen_rand_color()
         super(Player, self).__init__(self.__SIZE, color)
-        self.life = 1
-        self.velocity = (0, 0)
 
-        self.label = Label()
-        self.label.element.color = color[:3] + (255,)
-        self.label.position = (self.__SIZE/2, self.__SIZE/2)
-        self.add(self.label)
+        self.life = 1
+        self.name = name[:15]
+
+        self.__label = Label()
+        self.__label.element.color = color[:3] + (255,)
+        self.__label.position = (self.__SIZE/2, self.__SIZE/2)
+        self.add(self.__label)
 
     def __gen_rand_color(self):
         array = [random.random() for _ in range(3)]
@@ -73,7 +72,7 @@ class Player(CircleEntity):
         super(Player, self).update(dt)
         self.life -= 0.3 * dt
 
-        self.label.element.text = '{} -> {:.2f}'.format(self.name, self.life)
+        self.__label.element.text = '{} -> {:.2f}'.format(self.name, self.life)
 
     def __str__(self):
         return 'Player:{}'.format(self.name)
@@ -81,16 +80,18 @@ class Player(CircleEntity):
 
 class Feeder(CircleEntity):
     __SIZE = 80
+    __COLOR = (128, 255, 128, 240)
 
     def __init__(self):
-        super(Feeder, self).__init__(self.__SIZE, (128, 255, 128, 240))
+        super(Feeder, self).__init__(self.__SIZE, self.__COLOR)
 
 
 class Food(CircleEntity):
     __SIZE = 12
+    __COLOR = (255, 255, 0, 200)
 
     def __init__(self):
-        super(Food, self).__init__(self.__SIZE, (255, 255, 0, 200))
+        super(Food, self).__init__(self.__SIZE, self.__COLOR)
         self.life = 1
 
 
@@ -110,6 +111,7 @@ class Main(ColorLayer):
         self.schedule(self.__update)
 
     def add(self, obj, *args, **kwargs):
+        ''' Override add() that adds physical objects as well '''
         super(Main, self).add(obj, *args, **kwargs)
         if hasattr(obj, 'cshape'):
             self.collision_manager.add(obj)
@@ -128,13 +130,13 @@ class Main(ColorLayer):
         for fn in os.listdir('ai'):
             if fn[:6] != 'player':
                 continue
+
             mod_name = os.path.splitext(fn)[0]
             mod = importlib.import_module('ai.{}'.format(mod_name))
-
             ai = mod.Player()
+
             p = Player(ai.name)
             p.position = self.__rand_position()
-
             p.do(MoveAI(ai, self.__players, self.__food))
 
             self.__players.append(p)
@@ -144,10 +146,10 @@ class Main(ColorLayer):
         self.__food = []
 
         for i in range(self.__FOOD_COUNT):
-            food = Food()
-            food.position = self.__rand_position()
-            self.__food.append(food)
-            self.add(food, z=1)
+            f = Food()
+            f.position = self.__rand_position()
+            self.__food.append(f)
+            self.add(f, z=1)
 
     def __update(self, dt):
         # update physics positions
@@ -159,6 +161,7 @@ class Main(ColorLayer):
         for f in self.__food:
             f.update(dt)
 
+        # check all collisions
         for c1, c2 in self.collision_manager.iter_all_collisions():
             if type(c1) is Player and type(c2) is Player:
                 if c1.life > 0 and c2.life > 0 and math.fabs(c1.life - c2.life) > 1:
@@ -178,14 +181,20 @@ class Main(ColorLayer):
         # update lives
         dead_players = []
         for p in self.__players:
-            if p.life <= 0 or p.position[0] < 10 or p.position[0] > self.WIDTH-10 or p.position[1] < 10 or p.position[1] > self.HEIGHT-10:
+            if p.life <= 0:
+                dead_players.append(p)
+
+            if p.position[0] < 10 or p.position[0] > self.WIDTH-10 or p.position[1] < 10 or p.position[1] > self.HEIGHT-10:
+                # players out of bounds are also dead
                 dead_players.append(p)
 
         for p in dead_players:
-            # removing from layer crashes with error now
+            # removing from layer crashes with error at the moment, so just set them to an off-
+            # screen position and remove from players list
             self.__players.remove(p)
             p.remove_action(p.actions[0])
             p.position = -100, -100
+
             print('{} died'.format(p))
 
         for f in self.__food:
@@ -205,8 +214,6 @@ class MoveAI(act.Move):
         self.__food = food
 
     def step(self, dt):
-        super(MoveAI, self).step(dt)
-
         try:
             dx, dy = self.__ai.update(
                 [p.position for p in self.__players],
@@ -214,9 +221,11 @@ class MoveAI(act.Move):
                 [f.position for f in self.__food]
             )
         except:
+            # any exception in user script results in a null movement vector
+            print('{} threw exception'.format(self.target))
             dx, dy = 0, 0
 
-        # normalize
+        # normalize movement vector
         mag = (dx*dx + dy*dy) ** 0.5
         if math.fabs(mag) > 1e-6:
             dx /= mag
@@ -226,20 +235,24 @@ class MoveAI(act.Move):
             self.target.position[0] + dx * self.__SPEED,
             self.target.position[1] + dy * self.__SPEED
         )
-        self.__ai.position = self.target.position[:]
+
+        # inform the user scripts of their variables
+        # NOTE: make copies, user scripts aren't allowed refs
         self.__ai.life = self.target.life
+        self.__ai.position = self.target.position[:]
 
     def __deepcopy__(self, memo):
-        # the framework does a deepcopy on the action, and i need the players and food refs to
-        # work so this deepcopy override needs to be here
+        # the cocos framework does a deepcopy on the action, and we need the players and food
+        # refs to work in __init__ so this deepcopy override needs to be here
         return self
 
 
 class PlayerAI:
     def __init__(self, name):
-        self.position = (0, 0)
-        self.life = 0
         self.name = name
+
+        self.life = 0
+        self.position = (0, 0)
 
 
 if __name__ == '__main__':
